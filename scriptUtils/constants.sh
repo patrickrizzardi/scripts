@@ -36,3 +36,17 @@ print_footer() {
 print_menu_item() {
     echo -e "${green}$1${reset} $2" >&2
 }
+
+print_success_special() {
+    echo -e "${green}$1${magenta}$2${reset}" >&2
+}
+
+# For printing multi-line content with a title
+# Usage: print_success_block "Title" "$multi_line_content"
+print_success_block() {
+    local title="$1"
+    local content="$2"
+    
+    echo -e "${green}$title${reset}" >&2
+    echo -e "${magenta}$content${reset}" >&2
+}

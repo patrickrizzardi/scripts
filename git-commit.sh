@@ -375,7 +375,7 @@ Respond with ONLY the commit type (e.g. 'feat', 'fix', etc.) and no other text."
     else
         # Clean up the response and set it as commit type
         local predicted_type=$(echo "$ai_type_prediction" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-        print_success "AI predicted commit type: $predicted_type"
+        print_success_special "AI predicted commit type: " "$predicted_type"
         echo "$predicted_type"
         return 0
     fi
@@ -460,6 +460,7 @@ select_commit_type() {
         commit_type="feat"
     fi
 
+    print_success_special "Selected commit type: " "$commit_type"
     echo "$commit_type"
 }
 
@@ -586,7 +587,7 @@ generate_manual_commit_message() {
             completion="$completion ($reason)"
         fi
 
-        print_success "Commit message: $completion"
+        print_success_special "Commit message: " "$completion"
         echo "$completion"
         return
     fi
@@ -628,7 +629,7 @@ Keep it brief and informative."
         fi
     fi
 
-    print_success "Commit message: $completion"
+    print_success_special "Commit message: " "$completion"
     echo "$completion"
 }
 
@@ -667,7 +668,7 @@ Ensure it effectively communicates the key actions and reasons."
         print_warning "Avoid special characters or complex formatting in your instructions."
         echo "ERROR"
     else
-        print_success "Adjusted commit message: $adjusted_completion"
+        print_success_special "Adjusted commit message: " "$adjusted_completion"
         echo "$adjusted_completion"
     fi
 }
@@ -684,7 +685,7 @@ create_commit() {
     # Use the file for the commit message
     git commit -F "$commit_msg_file"
     rm "$commit_msg_file"
-    print_success "Commit created successfully!"
+    print_success_special "Commit created " "successfully!"
 }
 
 # Function to generate commit message
@@ -710,6 +711,7 @@ generate_commit() {
     formatted_type="$commit_type"
     if [ -n "$scope" ]; then
         formatted_type="$commit_type($scope)"
+        print_success_special "Using scope: " "$scope"
     fi
 
     # Determine if emoji should be used
@@ -719,7 +721,7 @@ generate_commit() {
     if [[ "$use_emoji" == "true" ]]; then
         emoji=$(get_commit_emoji "$commit_type")
         if [ -n "$emoji" ]; then
-            print_success "Using emoji: $emoji"
+            print_success_special "Using emoji: " "$emoji"
         else
             print_warning "No emoji found for commit type: $commit_type"
         fi
@@ -755,8 +757,7 @@ When adjusting a commit message, maintain context of previous adjustments and ap
                 print_error "Failed to generate AI suggestion."
             else
                 # Display the AI suggestion (handle multi-line messages)
-                print_success "AI suggests:"
-                echo -e "\n$ai_suggestion\n"
+                print_success_block "AI suggests:" "$ai_suggestion"
                 print_info "Use this suggestion? [y/n]"
                 read -p "" use_ai_suggestion
 
