@@ -1,0 +1,10 @@
+services:
+  app:
+    user: bun
+    image: oven/bun:1.1.18
+    restart: unless-stopped
+    working_dir: /usr/src/app
+    volumes:
+      - ../:/user # Should be the path to the user's directory
+      - ./:/usr/src/app # Should be the path to the app's directory
+      - ./backup:/backup # Should be the path to the backup directory

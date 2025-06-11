@@ -1,0 +1,28 @@
+{
+  "name": "vpm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bin/www",
+  "scripts": {
+    "test": "NODE_ENV=test jest --detectOpenHandles --forceExit",
+    "lint": "eslint . --quiet --exit-on-fatal-error --config eslint.config.mjs",
+    "lint:spelling": "cspell . --no-progress --unique",
+    "lint:format": "prettier --ignore-path .gitignore --write .",
+    "build": "tsc",
+    "start:dev": "npm run generate; nodemon bin/www.ts",
+    "start:worker": "bun --watch bin/worker.ts",
+    "start:websockets": "bun bin/websocket.ts",
+    "generate": "graphql-codegen --config codegen.ts",
+    "generate:watch": "nodemon --watch '**/*.schema.graphql' --ext 'graphql' --exec 'npm run generate'"
+  },
+  "types": "./build/src/index.d.ts",
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": { "get-folder-size": "^5.0.0" },
+  "devDependencies": {
+    "@types/bun": "^1.2.2",
+    "@types/node": "^22.13.1",
+    "colors": "^1.4.0",
+    "typescript": "^5.7.3"
+  }
+}
