@@ -18,7 +18,9 @@
   "types": "./build/src/index.d.ts",
   "author": "",
   "license": "UNLICENSED",
-  "dependencies": { "get-folder-size": "^5.0.0" },
+  "dependencies": {
+    "get-folder-size": "^5.0.0"
+  },
   "devDependencies": {
     "@types/bun": "^1.2.2",
     "@types/node": "^22.13.1",
