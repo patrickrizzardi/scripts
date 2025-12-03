@@ -27,7 +27,7 @@ print_warning() {
 }
 
 print_header() {
-    echo -e "${CYAN}$1${NC}"
+    echo -e "${CYAN}========== $1 ==========${NC}"
 }
 
 print_menu_item() {
@@ -36,9 +36,9 @@ print_menu_item() {
 
 # Function to search for text in files
 search_text_in_files() {
-    print_info "Enter the path to search in (default: ~/development):"
+    print_info "Enter the path to search in (default: <current directory>):"
     read -r search_path
-    search_path=${search_path:-~/development}
+    search_path=${search_path:-.}
 
     print_info "Enter the text to search for:"
     read -r search_text
@@ -200,6 +200,55 @@ find_port_usage() {
     exit 0
 }
 
+compare_git_branches_without_commit_history() {
+    # Check if you have are in a git repository
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+        print_error "Error: Not in a git repository."
+        return 1
+    fi
+
+    # Check if you have the colordiff command
+    if ! command -v colordiff &>/dev/null; then
+        print_error "Error: 'colordiff' command is missing."
+        print_warning "Please install it using:"
+        print_info "sudo apt-get update && sudo apt-get install -y colordiff"
+        exit 0
+    fi
+
+    # base branch is the current branch in the terminal
+    base_branch=$(git rev-parse --abbrev-ref HEAD)
+
+    print_info "Enter the target branch name (default: main):"
+    read -r target_branch
+    target_branch=${target_branch:-main}
+
+    mkdir -p /tmp/base /tmp/target
+
+    git archive $base_branch | tar -x -C /tmp/base
+    git archive $target_branch | tar -x -C /tmp/target
+
+    diff -r -w -B -b -Z /tmp/base /tmp/target | colordiff
+
+    # Get filenames that are different between branches
+    filenames=$(diff -r -w -B -b -Z /tmp/base /tmp/target | grep -E "^(Only in|diff)" | sed 's/Only in //g' | sed 's/: /\//g' | sed 's/diff -r .*\/base\///g' | sed 's/ .*//g' | sort -u)
+    if [[ -n "$filenames" ]]; then
+        # Remove duplicate filenames IE the ones that start with /tmp/base/app would be the same as /tmp/target/app because they are the same file just in different locations
+        filenames=$(echo "$filenames" | sed 's/\/tmp\/base\///g' | sed 's/\/tmp\/target\///g' | sort -u)
+        print_header "Files that differ:"
+        echo "$filenames"
+    else
+        print_warning "No file differences found"
+    fi
+
+    # Get number of files in the diff
+    print_header "Number of files in the diff:"
+    num_files=$(echo "$filenames" | grep -v "^$" | wc -l)
+    print_success "$num_files"
+
+    rm -rf /tmp/base /tmp/target
+    exit 0
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
@@ -208,6 +257,7 @@ menu_items=(
     "Show network connections"
     "Show system info"
     "Find port usage"
+    "Compare git branches without commit history"
 )
 
 # Define menu functions
@@ -218,6 +268,7 @@ declare -A menu_functions=(
     ["4"]="show_network_connections"
     ["5"]="show_system_info"
     ["6"]="find_port_usage"
+    ["7"]="compare_git_branches_without_commit_history"
 )
 
 # Function to display menu
