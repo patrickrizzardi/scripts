@@ -1,0 +1,78 @@
+/**
+ * Base TypeScript Configuration
+ *
+ * This is the foundation configuration file that all other tsconfig files extend from.
+ * It contains only the shared compiler options that are common across ALL projects.
+ *
+ * Purpose:
+ * - Provides consistent compiler behavior across all projects
+ * - Centralizes core TypeScript settings
+ * - Ensures type-safety standards are maintained
+ *
+ * Note: This file should NOT contain:
+ * - Project-specific paths
+ * - Output directory configurations
+ * - Project references
+ */
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ESNext", // Specify ECMAScript target version
+    "module": "Preserve", // Use preserve for better compatibility with bun
+    "moduleResolution": "bundler", // Bun is considered a bundler and suggest this be bundler
+    "lib": ["ESNext", "DOM", "DOM.Iterable"], // List of library files to include in the compilation
+    "downlevelIteration": true, // Enable correct iteration of Sets, Maps, and other iterables
+    "types": ["bun-types"], // Add bun-types and vite types to the types array
+
+    /* Compilation Configuration */
+    "composite": false, // Disable composite project support - not needed for Bun's fast transpilation
+    "sourceMap": false, // Don't generate source maps
+    "declaration": false, // Generate .d.ts files
+    "declarationMap": false, // Generate sourcemaps for .d.ts files
+    "removeComments": true, // Remove comments from output
+    "importHelpers": false, // Import emit helpers from 'tslib'
+    "importsNotUsedAsValues": "remove", // Remove imports only used as types
+    "isolatedModules": true, // Ensures compatibility with Bun's fast transpilation by ensuring each file can be safely transpiled
+    "noEmit": true, // Don't emit output files (Bun handles transpilation)
+    "incremental": true, // Enable incremental compilation (caches and speeds up future compilation)
+
+    /* Module Resolution */
+    "allowImportingTsExtensions": true, // Allow importing .ts files as modules
+    "resolveJsonModule": true, // Allow importing JSON files as modules
+
+    /* Module Interop */
+    "esModuleInterop": true, // Enables emit interop between CommonJS and ES Modules
+    "allowSyntheticDefaultImports": true, // Allow default imports from modules with no default export
+    "forceConsistentCasingInFileNames": true, // Ensure case sensitivity in file names
+
+    /* Type Checking */
+    "strict": true, // Enable all strict type-checking options
+    "noImplicitAny": true, // Raise error on expressions and declarations with implied 'any' type
+    "noImplicitThis": true, // Raise error on 'this' expressions with implied 'any' type
+    "strictFunctionTypes": true, // Enable strict checking of function types
+    "strictNullChecks": true, // Enable strict null checks
+    "strictPropertyInitialization": true, // Ensure non-undefined class properties are initialized
+    "strictBindCallApply": true, // Enable strict 'bind', 'call', and 'apply' methods on functions
+    "exactOptionalPropertyTypes": false, // Disable strict optional property checking to allow undefined values. This is needed for sequelize, or it will throw all sorts of errors
+
+    /* Additional Checks */
+    "noUnusedLocals": true, // Report errors on unused locals
+    "noUnusedParameters": true, // Report errors on unused parameters
+    "noImplicitReturns": true, // Report error when not all code paths in function return a value
+    "noFallthroughCasesInSwitch": true, // Report errors for fallthrough cases in switch statement
+    "noImplicitOverride": true, // Ensure override keyword is used when overriding methods
+    "allowUnreachableCode": false, // Error on unreachable code
+    "allowUnusedLabels": false, // Error on unused labels
+    "noUncheckedIndexedAccess": true, // Add undefined to indexed access
+
+    /* Experimental Options */
+    "experimentalDecorators": true, // Enables experimental support for decorators
+    "emitDecoratorMetadata": true, // Enables experimental support for emitting type metadata. We want this disabled or we get ts errors in our models
+
+    /* Advanced */
+    "skipLibCheck": true, // Skip type checking of declaration files
+    "allowJs": false, // Allow JavaScript files to be compiled
+    "pretty": true // Enable pretty output for errors
+  },
+  "exclude": ["node_modules", "dist"]
+}
