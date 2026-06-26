@@ -344,6 +344,21 @@ _rsync_write_config() {
     _rsync_generate_timer_content > "$systemd_dir/rsync-sync.timer"
 }
 
+_rsync_install_service() {
+    if ! command -v systemctl &>/dev/null; then
+        print_error "systemd is not available."
+        print_warning "To enable systemd in WSL, add the following to /etc/wsl.conf:"
+        print_info "  [boot]"
+        print_info "  systemd=true"
+        print_warning "Then restart WSL: run 'wsl --shutdown' from Windows, then reopen."
+        return 1
+    fi
+
+    loginctl enable-linger "$USER" 2>/dev/null || true
+    systemctl --user daemon-reload
+    systemctl --user enable --now rsync-sync.timer
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
