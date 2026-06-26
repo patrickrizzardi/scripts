@@ -109,3 +109,18 @@ teardown() {
     _rsync_write_config "/src/a|/dest/a"
     [ -f "$HOME/.config/systemd/user/rsync-sync.timer" ]
 }
+
+@test "_rsync_view_pairs: shows message when no pairs configured" {
+    run _rsync_view_pairs
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"No sync pairs"* ]]
+}
+
+@test "_rsync_view_pairs: lists pairs from pairs.conf" {
+    mkdir -p "$HOME/.config/rsync-sync"
+    printf '/src/a|/dest/a\n/src/b|/dest/b\n' > "$HOME/.config/rsync-sync/pairs.conf"
+    run _rsync_view_pairs
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"/src/a"* ]]
+    [[ "$output" == *"/dest/b"* ]]
+}

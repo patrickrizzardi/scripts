@@ -433,6 +433,73 @@ _rsync_add_pairs() {
     esac
 }
 
+_rsync_view_pairs() {
+    local pairs_file="$HOME/.config/rsync-sync/pairs.conf"
+    if [[ ! -f "$pairs_file" ]] || [[ ! -s "$pairs_file" ]]; then
+        print_warning "No sync pairs configured."
+        return
+    fi
+    print_header "Current Sync Pairs"
+    local i=1
+    while IFS='|' read -r source target; do
+        print_menu_item "$i." "$source → $target"
+        ((i++))
+    done < "$pairs_file"
+}
+
+_rsync_remove_pair() {
+    local pairs_file="$HOME/.config/rsync-sync/pairs.conf"
+    if [[ ! -f "$pairs_file" ]] || [[ ! -s "$pairs_file" ]]; then
+        print_warning "No sync pairs configured."
+        return
+    fi
+
+    _rsync_view_pairs
+    echo ""
+    print_info "Enter the number of the pair to remove (or 0 to cancel):"
+    read -r choice
+
+    [[ "$choice" == "0" ]] && return
+
+    local line_count
+    line_count=$(wc -l < "$pairs_file")
+
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || [[ "$choice" -lt 1 || "$choice" -gt "$line_count" ]]; then
+        print_error "Invalid selection."
+        return 1
+    fi
+
+    local pair
+    pair=$(sed -n "${choice}p" "$pairs_file")
+    local display="${pair/|/ → }"
+    print_warning "Remove: $display? (y/n)"
+    read -r confirm
+
+    [[ "$confirm" != "y" ]] && return
+
+    sed -i "${choice}d" "$pairs_file"
+    print_success "Pair removed."
+    systemctl --user restart rsync-sync.timer 2>/dev/null || true
+}
+
+_rsync_manage_service() {
+    print_header "Service Control"
+    print_menu_item "1." "Start"
+    print_menu_item "2." "Stop"
+    print_menu_item "3." "Restart"
+    print_menu_item "4." "Status"
+    print_info "Your choice:"
+    read -r svc_choice
+
+    case "$svc_choice" in
+        1) systemctl --user start rsync-sync.timer && print_success "Started." ;;
+        2) systemctl --user stop rsync-sync.timer && print_success "Stopped." ;;
+        3) systemctl --user restart rsync-sync.timer && print_success "Restarted." ;;
+        4) systemctl --user status rsync-sync.timer ;;
+        *) print_error "Invalid choice." ;;
+    esac
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
