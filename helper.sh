@@ -360,9 +360,9 @@ _rsync_install_service() {
 }
 
 _rsync_multi_select_from_dir() {
-    print_warning "Make sure your terminal is cd'd into the parent folder you want to sync FROM."
-    print_info "Current directory: $PWD"
-    echo ""
+    print_warning "Make sure your terminal is cd'd into the parent folder you want to sync FROM." >&2
+    print_info "Current directory: $PWD" >&2
+    echo "" >&2
 
     local items=()
     while IFS= read -r item; do
@@ -370,32 +370,32 @@ _rsync_multi_select_from_dir() {
     done < <(ls -1 "$PWD" 2>/dev/null)
 
     if [[ ${#items[@]} -eq 0 ]]; then
-        print_error "No files or directories found in $PWD."
+        print_error "No files or directories found in $PWD." >&2
         return 1
     fi
 
-    print_header "Select items to sync"
+    print_header "Select items to sync" >&2
     for i in "${!items[@]}"; do
-        print_menu_item "$((i + 1))." "${items[$i]}"
+        print_menu_item "$((i + 1))." "${items[$i]}" >&2
     done
-    echo ""
-    print_info "Enter numbers separated by spaces (e.g. 1 3 5):"
+    echo "" >&2
+    print_info "Enter numbers separated by spaces (e.g. 1 3 5):" >&2
     read -r selection
 
     local selected=()
     mapfile -t selected < <(_rsync_apply_selection "$selection" "${items[@]}")
 
     if [[ ${#selected[@]} -eq 0 ]]; then
-        print_error "No valid items selected."
+        print_error "No valid items selected." >&2
         return 1
     fi
 
-    print_info "Enter the target directory (e.g. ~/.claude):"
+    print_info "Enter the target directory (e.g. ~/.claude):" >&2
     read -r target_dir
     target_dir="${target_dir/#\~/$HOME}"
 
     if [[ -z "$target_dir" ]]; then
-        print_error "Target directory cannot be empty."
+        print_error "Target directory cannot be empty." >&2
         return 1
     fi
 
@@ -403,10 +403,10 @@ _rsync_multi_select_from_dir() {
 }
 
 _rsync_add_pairs() {
-    print_header "Add Sync Pairs"
-    print_menu_item "1." "Multi-select from current directory"
-    print_menu_item "2." "Enter path manually"
-    print_info "Your choice:"
+    print_header "Add Sync Pairs" >&2
+    print_menu_item "1." "Multi-select from current directory" >&2
+    print_menu_item "2." "Enter path manually" >&2
+    print_info "Your choice:" >&2
     read -r mode_choice
 
     case "$mode_choice" in
@@ -414,20 +414,20 @@ _rsync_add_pairs() {
             _rsync_multi_select_from_dir
             ;;
         2)
-            print_info "Enter full source path:"
+            print_info "Enter full source path:" >&2
             read -r src_path
             src_path="${src_path/#\~/$HOME}"
-            print_info "Enter full target path:"
+            print_info "Enter full target path:" >&2
             read -r tgt_path
             tgt_path="${tgt_path/#\~/$HOME}"
             if [[ -z "$src_path" || -z "$tgt_path" ]]; then
-                print_error "Source and target paths cannot be empty."
+                print_error "Source and target paths cannot be empty." >&2
                 return 1
             fi
             echo "${src_path}|${tgt_path}"
             ;;
         *)
-            print_error "Invalid choice."
+            print_error "Invalid choice." >&2
             return 1
             ;;
     esac
@@ -479,6 +479,9 @@ _rsync_remove_pair() {
 
     sed -i "${choice}d" "$pairs_file"
     print_success "Pair removed."
+    if [[ ! -s "$pairs_file" ]]; then
+        print_warning "All pairs removed. Consider stopping the service (option 4)."
+    fi
     systemctl --user restart rsync-sync.timer 2>/dev/null || true
 }
 
@@ -492,9 +495,9 @@ _rsync_manage_service() {
     read -r svc_choice
 
     case "$svc_choice" in
-        1) systemctl --user start rsync-sync.timer && print_success "Started." ;;
-        2) systemctl --user stop rsync-sync.timer && print_success "Stopped." ;;
-        3) systemctl --user restart rsync-sync.timer && print_success "Restarted." ;;
+        1) systemctl --user start rsync-sync.timer && print_success "Started." || print_error "Failed to start timer." ;;
+        2) systemctl --user stop rsync-sync.timer && print_success "Stopped." || print_error "Failed to stop timer." ;;
+        3) systemctl --user restart rsync-sync.timer && print_success "Restarted." || print_error "Failed to restart timer." ;;
         4) systemctl --user status rsync-sync.timer ;;
         *) print_error "Invalid choice." ;;
     esac
@@ -524,7 +527,11 @@ setup_file_sync() {
         fi
 
         _rsync_write_config "${pairs[@]}"
-        _rsync_install_service || exit 0
+        _rsync_install_service || {
+            print_error "Timer could not be enabled. Config was saved." >&2
+            print_warning "Use 'Set up file sync' → option 4 (Service Control) → Start to retry." >&2
+            exit 0
+        }
 
         echo ""
         print_success "Sync configured! Active pairs:"

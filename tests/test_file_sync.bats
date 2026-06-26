@@ -124,3 +124,17 @@ teardown() {
     [[ "$output" == *"/src/a"* ]]
     [[ "$output" == *"/dest/b"* ]]
 }
+
+@test "_rsync_remove_pair: shows no-pairs message when config missing" {
+    run _rsync_remove_pair
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"No sync pairs"* ]]
+}
+
+@test "_rsync_remove_pair: removes correct line from pairs.conf" {
+    mkdir -p "$HOME/.config/rsync-sync"
+    printf '/src/a|/dest/a\n/src/b|/dest/b\n' > "$HOME/.config/rsync-sync/pairs.conf"
+    run bash -c "source ${BATS_TEST_DIRNAME}/../helper.sh; _rsync_remove_pair" <<< $'1\ny'
+    remaining=$(cat "$HOME/.config/rsync-sync/pairs.conf")
+    [ "$remaining" = "/src/b|/dest/b" ]
+}
