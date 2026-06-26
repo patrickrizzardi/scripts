@@ -249,6 +249,20 @@ compare_git_branches_without_commit_history() {
     exit 0
 }
 
+_rsync_apply_selection() {
+    local selection="$1"
+    shift
+    local items=("$@")
+    for num in $selection; do
+        if [[ "$num" =~ ^[0-9]+$ ]]; then
+            local idx=$((num - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#items[@]} ]]; then
+                echo "${items[$idx]}"
+            fi
+        fi
+    done
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
