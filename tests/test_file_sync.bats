@@ -36,3 +36,17 @@ teardown() {
     [ "${lines[0]}" = "alpha" ]
     [ "${lines[1]}" = "beta" ]
 }
+
+@test "_rsync_build_pairs_from_dir: builds correct source|target lines" {
+    run _rsync_build_pairs_from_dir "/mnt/c/src" "/home/user/dest" "plugins" "settings.json"
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "/mnt/c/src/plugins|/home/user/dest/plugins" ]
+    [ "${lines[1]}" = "/mnt/c/src/settings.json|/home/user/dest/settings.json" ]
+}
+
+@test "_rsync_build_pairs_from_dir: handles single item" {
+    run _rsync_build_pairs_from_dir "/src" "/dest" "foo"
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "/src/foo|/dest/foo" ]
+    [ "${#lines[@]}" -eq 1 ]
+}

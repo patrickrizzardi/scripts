@@ -263,6 +263,16 @@ _rsync_apply_selection() {
     done
 }
 
+_rsync_build_pairs_from_dir() {
+    local source_dir="$1"
+    local target_dir="$2"
+    shift 2
+    local items=("$@")
+    for item in "${items[@]}"; do
+        echo "${source_dir}/${item}|${target_dir}/${item}"
+    done
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
