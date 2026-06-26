@@ -359,6 +359,80 @@ _rsync_install_service() {
     systemctl --user enable --now rsync-sync.timer
 }
 
+_rsync_multi_select_from_dir() {
+    print_warning "Make sure your terminal is cd'd into the parent folder you want to sync FROM."
+    print_info "Current directory: $PWD"
+    echo ""
+
+    local items=()
+    while IFS= read -r item; do
+        items+=("$item")
+    done < <(ls -1 "$PWD" 2>/dev/null)
+
+    if [[ ${#items[@]} -eq 0 ]]; then
+        print_error "No files or directories found in $PWD."
+        return 1
+    fi
+
+    print_header "Select items to sync"
+    for i in "${!items[@]}"; do
+        print_menu_item "$((i + 1))." "${items[$i]}"
+    done
+    echo ""
+    print_info "Enter numbers separated by spaces (e.g. 1 3 5):"
+    read -r selection
+
+    local selected=()
+    mapfile -t selected < <(_rsync_apply_selection "$selection" "${items[@]}")
+
+    if [[ ${#selected[@]} -eq 0 ]]; then
+        print_error "No valid items selected."
+        return 1
+    fi
+
+    print_info "Enter the target directory (e.g. ~/.claude):"
+    read -r target_dir
+    target_dir="${target_dir/#\~/$HOME}"
+
+    if [[ -z "$target_dir" ]]; then
+        print_error "Target directory cannot be empty."
+        return 1
+    fi
+
+    _rsync_build_pairs_from_dir "$PWD" "$target_dir" "${selected[@]}"
+}
+
+_rsync_add_pairs() {
+    print_header "Add Sync Pairs"
+    print_menu_item "1." "Multi-select from current directory"
+    print_menu_item "2." "Enter path manually"
+    print_info "Your choice:"
+    read -r mode_choice
+
+    case "$mode_choice" in
+        1)
+            _rsync_multi_select_from_dir
+            ;;
+        2)
+            print_info "Enter full source path:"
+            read -r src_path
+            src_path="${src_path/#\~/$HOME}"
+            print_info "Enter full target path:"
+            read -r tgt_path
+            tgt_path="${tgt_path/#\~/$HOME}"
+            if [[ -z "$src_path" || -z "$tgt_path" ]]; then
+                print_error "Source and target paths cannot be empty."
+                return 1
+            fi
+            echo "${src_path}|${tgt_path}"
+            ;;
+        *)
+            print_error "Invalid choice."
+            return 1
+            ;;
+    esac
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
