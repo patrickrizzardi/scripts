@@ -273,6 +273,61 @@ _rsync_build_pairs_from_dir() {
     done
 }
 
+_rsync_generate_sync_sh_content() {
+    cat <<'EOF'
+#!/bin/bash
+PAIRS_FILE="$HOME/.config/rsync-sync/pairs.conf"
+LOG_FILE="$HOME/.config/rsync-sync/sync.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+while IFS='|' read -r source target; do
+    [[ -z "$source" || "$source" == \#* ]] && continue
+    if [[ ! -e "$source" ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): source not found: $source" >> "$LOG_FILE"
+        continue
+    fi
+    if [[ -d "$source" ]]; then
+        mkdir -p "$target"
+        rsync -a --delete "${source}/" "${target}/" 2>>"$LOG_FILE" \
+            || echo "$(date '+%Y-%m-%d %H:%M:%S'): rsync failed: $source → $target" >> "$LOG_FILE"
+    else
+        mkdir -p "$(dirname "$target")"
+        rsync -a "$source" "$target" 2>>"$LOG_FILE" \
+            || echo "$(date '+%Y-%m-%d %H:%M:%S'): rsync failed: $source → $target" >> "$LOG_FILE"
+    fi
+done < "$PAIRS_FILE"
+EOF
+}
+
+_rsync_generate_service_content() {
+    cat <<'EOF'
+[Unit]
+Description=rsync file sync
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/rsync-sync/sync.sh
+
+[Install]
+WantedBy=default.target
+EOF
+}
+
+_rsync_generate_timer_content() {
+    cat <<'EOF'
+[Unit]
+Description=rsync file sync timer
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+EOF
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"

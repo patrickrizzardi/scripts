@@ -50,3 +50,39 @@ teardown() {
     [ "${lines[0]}" = "/src/foo|/dest/foo" ]
     [ "${#lines[@]}" -eq 1 ]
 }
+
+@test "_rsync_generate_sync_sh_content: uses rsync -a --delete for directories" {
+    run _rsync_generate_sync_sh_content
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"rsync -a --delete"* ]]
+}
+
+@test "_rsync_generate_sync_sh_content: uses rsync -a for files" {
+    run _rsync_generate_sync_sh_content
+    [[ "$output" == *'rsync -a "$source"'* ]]
+}
+
+@test "_rsync_generate_sync_sh_content: reads pairs.conf" {
+    run _rsync_generate_sync_sh_content
+    [[ "$output" == *"pairs.conf"* ]]
+}
+
+@test "_rsync_generate_sync_sh_content: logs errors to sync.log" {
+    run _rsync_generate_sync_sh_content
+    [[ "$output" == *"sync.log"* ]]
+}
+
+@test "_rsync_generate_service_content: uses %h for home dir" {
+    run _rsync_generate_service_content
+    [[ "$output" == *"%h/.config/rsync-sync/sync.sh"* ]]
+}
+
+@test "_rsync_generate_timer_content: sets 30s interval" {
+    run _rsync_generate_timer_content
+    [[ "$output" == *"OnUnitActiveSec=30s"* ]]
+}
+
+@test "_rsync_generate_timer_content: sets 1s accuracy" {
+    run _rsync_generate_timer_content
+    [[ "$output" == *"AccuracySec=1s"* ]]
+}
