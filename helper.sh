@@ -282,13 +282,15 @@ display_menu() {
 }
 
 # Main menu loop
-while true; do
-    display_menu
-    read -r choice
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    while true; do
+        display_menu
+        read -r choice
 
-    if [[ -n "${menu_functions[$choice]}" ]]; then
-        eval "${menu_functions[$choice]}"
-    else
-        print_error "Invalid choice. Please try again."
-    fi
-done
+        if [[ -n "${menu_functions[$choice]}" ]]; then
+            eval "${menu_functions[$choice]}"
+        else
+            print_error "Invalid choice. Please try again."
+        fi
+    done
+fi
