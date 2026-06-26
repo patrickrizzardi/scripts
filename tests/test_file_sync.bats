@@ -86,3 +86,26 @@ teardown() {
     run _rsync_generate_timer_content
     [[ "$output" == *"AccuracySec=1s"* ]]
 }
+
+@test "_rsync_write_config: creates pairs.conf with all pairs" {
+    _rsync_write_config "/src/a|/dest/a" "/src/b|/dest/b"
+    [ -f "$HOME/.config/rsync-sync/pairs.conf" ]
+    run cat "$HOME/.config/rsync-sync/pairs.conf"
+    [ "${lines[0]}" = "/src/a|/dest/a" ]
+    [ "${lines[1]}" = "/src/b|/dest/b" ]
+}
+
+@test "_rsync_write_config: sync.sh is executable" {
+    _rsync_write_config "/src/a|/dest/a"
+    [ -x "$HOME/.config/rsync-sync/sync.sh" ]
+}
+
+@test "_rsync_write_config: creates systemd service file" {
+    _rsync_write_config "/src/a|/dest/a"
+    [ -f "$HOME/.config/systemd/user/rsync-sync.service" ]
+}
+
+@test "_rsync_write_config: creates systemd timer file" {
+    _rsync_write_config "/src/a|/dest/a"
+    [ -f "$HOME/.config/systemd/user/rsync-sync.timer" ]
+}

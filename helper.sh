@@ -328,6 +328,22 @@ WantedBy=timers.target
 EOF
 }
 
+_rsync_write_config() {
+    local pairs=("$@")
+    local config_dir="$HOME/.config/rsync-sync"
+    local systemd_dir="$HOME/.config/systemd/user"
+
+    mkdir -p "$config_dir" "$systemd_dir"
+
+    printf '%s\n' "${pairs[@]}" > "$config_dir/pairs.conf"
+
+    _rsync_generate_sync_sh_content > "$config_dir/sync.sh"
+    chmod +x "$config_dir/sync.sh"
+
+    _rsync_generate_service_content > "$systemd_dir/rsync-sync.service"
+    _rsync_generate_timer_content > "$systemd_dir/rsync-sync.timer"
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
