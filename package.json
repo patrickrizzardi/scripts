@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate": "npm-run-all --parallel lint format",
-    "test:bash": "bats tests/"
+    "test:bash": "PATH=\"$HOME/.local/bin:$PATH\" bats tests/"
   },
   "dependencies": {
     "chalk": "^5.3.0",
