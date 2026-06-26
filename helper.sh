@@ -500,6 +500,68 @@ _rsync_manage_service() {
     esac
 }
 
+setup_file_sync() {
+    local config_dir="$HOME/.config/rsync-sync"
+    local pairs_file="$config_dir/pairs.conf"
+
+    if ! command -v rsync &>/dev/null; then
+        print_error "rsync is not installed."
+        print_warning "Install it with: sudo apt-get install -y rsync"
+        exit 0
+    fi
+
+    if [[ ! -f "$pairs_file" ]]; then
+        print_header "File Sync Setup"
+        print_info "No existing configuration found. Let's set one up."
+        echo ""
+
+        local pairs=()
+        mapfile -t pairs < <(_rsync_add_pairs)
+
+        if [[ ${#pairs[@]} -eq 0 ]]; then
+            print_error "No pairs added. Exiting."
+            exit 0
+        fi
+
+        _rsync_write_config "${pairs[@]}"
+        _rsync_install_service || exit 0
+
+        echo ""
+        print_success "Sync configured! Active pairs:"
+        _rsync_view_pairs
+    else
+        while true; do
+            print_header "File Sync Manager"
+            print_menu_item "1." "Add sync pairs"
+            print_menu_item "2." "View existing pairs"
+            print_menu_item "3." "Remove a sync pair"
+            print_menu_item "4." "Start / Stop / Restart service"
+            print_menu_item "5." "Exit"
+            print_info "Your choice:"
+            read -r mgmt_choice
+
+            case "$mgmt_choice" in
+                1)
+                    local new_pairs=()
+                    mapfile -t new_pairs < <(_rsync_add_pairs)
+                    if [[ ${#new_pairs[@]} -gt 0 ]]; then
+                        printf '%s\n' "${new_pairs[@]}" >> "$pairs_file"
+                        systemctl --user restart rsync-sync.timer 2>/dev/null || true
+                        print_success "Pairs added."
+                    fi
+                    ;;
+                2) _rsync_view_pairs ;;
+                3) _rsync_remove_pair ;;
+                4) _rsync_manage_service ;;
+                5) exit 0 ;;
+                *) print_error "Invalid choice." ;;
+            esac
+            echo ""
+        done
+    fi
+    exit 0
+}
+
 # Define menu items in order
 menu_items=(
     "Find a file with text in it"
@@ -509,6 +571,7 @@ menu_items=(
     "Show system info"
     "Find port usage"
     "Compare git branches without commit history"
+    "Set up file sync"
 )
 
 # Define menu functions
@@ -520,6 +583,7 @@ declare -A menu_functions=(
     ["5"]="show_system_info"
     ["6"]="find_port_usage"
     ["7"]="compare_git_branches_without_commit_history"
+    ["8"]="setup_file_sync"
 )
 
 # Function to display menu
