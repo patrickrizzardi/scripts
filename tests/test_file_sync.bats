@@ -10,6 +10,6 @@ teardown() {
     rm -rf "$HOME"
 }
 
-@test "helper.sh sources without errors" {
-    true
+@test "helper.sh sources and defines display_menu function" {
+    declare -f display_menu
 }
