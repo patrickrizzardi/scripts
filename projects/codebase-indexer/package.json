@@ -1,0 +1,13 @@
+{
+  "name": "codebase-indexer",
+  "version": "1.0.0",
+  "description": "Indexes TypeScript project exports for Claude context persistence",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "bin": {
+    "codebase-indexer": "./index.ts"
+  }
+}
