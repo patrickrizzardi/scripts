@@ -3,10 +3,10 @@
 ## Overview
 
 Replace `helper.sh` (bash, monolithic, numeric-menu) with an interactive TypeScript CLI running on
-Bun inside Docker, living at `~/development/scripts/projects/dev-helper/`. Same 8 capabilities as today,
-split one-file-per-command, driven by arrow-key/checkbox prompts instead of typed numbers. Two
-functional upgrades ride along: instant (inotify-triggered) file sync instead of a 30s poll, and
-duplicate-selection prevention in the multi-select add-pairs flow.
+a native Bun install, living at `~/development/scripts/projects/dev-helper/`. Same 8 capabilities
+as today, split one-file-per-command, driven by arrow-key/checkbox prompts instead of typed
+numbers. Two functional upgrades ride along: instant (inotify-triggered) file sync instead of a
+30s poll, and duplicate-selection prevention in the multi-select add-pairs flow.
 
 This design supersedes
 [the original rsync-sync-menu-option design](./2026-06-26-rsync-sync-menu-option-design.md) for
@@ -14,7 +14,33 @@ the sync-trigger mechanism (timer → watcher) and target file layout (`helper.s
 the pairs-file format, config paths, and remove/view flows it documents are unchanged and carried
 forward as-is.
 
-## Why Bun + Docker
+## Execution model — native Bun, not Docker (reversed post-implementation)
+
+**Originally specified as Bun-in-Docker; reversed after the final whole-branch review caught it
+broken.** The original reasoning (below, kept for the record) assumed namespace-sharing
+(`network_mode: host`, `pid: host`) plus bind-mounting `$HOME` would let the container reach host
+state. That assumption was wrong: namespace sharing shares the process/network *view*, not the
+*filesystem*. The container's binary lookups (`git`, `rsync`, `ss`, `systemctl`, `loginctl`,
+`lscpu`, `colordiff`, `inotifywait`) resolve against the container's own Alpine root filesystem,
+which ships almost none of them — verified by directly probing the built image. 5 of 8 menu
+commands broke, and `systemctl`/`loginctl` have no viable Alpine-side fix at all (Alpine runs
+OpenRC, not systemd — there is no package that lets a containerized `systemctl` cleanly speak to
+the host's systemd `--user` session). `df`/`du` also read the container's own overlay filesystem,
+not the host's real disk, regardless of tooling.
+
+Patrick's original goal — no host-runtime sprawl, trivially removable — is satisfied just as well
+by installing Bun natively via its official installer (`curl -fsSL https://bun.sh/install | bash`),
+which drops one self-contained binary tree into `~/.bun` with no system package manager involved;
+`rm -rf ~/.bun` removes it completely. This is the one deliberate, named exception to this
+environment's standing "containerize a missing runtime" default: that default assumes the tool
+being run doesn't need deep host integration. This tool's entire purpose is host filesystem /
+network / systemd inspection and mutation — the case that default doesn't cover, and container
+isolation actively fights against, as this project rediscovered the hard way.
+
+`docker-compose.yml` and `run.sh` are removed. `bun install` + `bun run src/index.ts` (or a
+`run.sh` that does both) is the whole execution path.
+
+### Original Bun+Docker reasoning (superseded, kept for the record)
 
 This host has no Node/Bun installed natively — per this environment's standing rule, a missing
 runtime is containerized rather than installed on the host. Patrick's stated reason: he doesn't
@@ -32,7 +58,7 @@ working, `docker-compose.yml` runs with `network_mode: host`, `pid: host`, and b
 plus `/run/user/$UID` (with `DBUS_SESSION_BUS_ADDRESS` passed through) so the container can reach
 the host's user systemd/D-Bus session. This is a deliberate, named tradeoff: less isolation than a
 typical container, in exchange for zero installed host runtimes and trivial teardown (`docker
-compose down --rmi all` removes every trace).
+compose down --rmi all` removes every trace). **This reasoning was disproven — see above.**
 
 ## Directory Layout
 
