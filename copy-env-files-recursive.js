@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
 // read the folder names in the current directory
 const folders = fs.readdirSync(__dirname);
@@ -22,11 +22,10 @@ function recursiveReadDir(folderPath, dirs, envPaths) {
 
   for (const content of contentOfFolder) {
     // If the content a directory add it to the dirs array
-    if (fs.lstatSync(path.join(folderPath, content)).isDirectory())
-      dirs.push(content);
+    if (fs.lstatSync(path.join(folderPath, content)).isDirectory()) dirs.push(content);
 
     // If the file is a .env file add it to the envPaths array
-    if (content === ".env") envPaths.push(path.join(folderPath, content));
+    if (content === '.env') envPaths.push(path.join(folderPath, content));
   }
 
   // If there are directories in the dirs array, recursively call the function
@@ -43,7 +42,7 @@ function recursiveReadDir(folderPath, dirs, envPaths) {
 if (files.length > 0) {
   for (const file of files) {
     // Get the folder name of the file
-    const folderName = file.split("/.env")[0].split("/").pop();
+    const folderName = file.split('/.env')[0].split('/').pop();
     const filePath = path.join(__dirname, `env/${folderName}.env`);
     fs.copyFileSync(file, filePath);
   }
