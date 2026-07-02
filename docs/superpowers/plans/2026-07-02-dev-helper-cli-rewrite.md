@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace `helper.sh` with an interactive TypeScript CLI (`dev-helper`) running on Bun in Docker, at `~/development/projects/dev-helper/`, with instant inotify-based file sync and multi-select dedup.
+**Goal:** Replace `helper.sh` with an interactive TypeScript CLI (`dev-helper`) running on Bun in Docker, at `~/development/scripts/projects/dev-helper/`, with instant inotify-based file sync and multi-select dedup.
 
 **Architecture:** One Bun/TypeScript project, `src/commands/*` (one file per menu item) + `src/commands/fileSync/*` (the sync subsystem, further split by responsibility) + `src/utils/*` (shared print/prompt/command-check helpers). `src/index.ts` is the menu loop. Every command splits pure/testable logic (arg-building, parsing, formatting) from the untestable glue that shells out or prompts interactively — mirrors how the original bats suite only tested the pure bash functions (`_rsync_apply_selection`, `_rsync_build_pairs_from_dir`, etc.), never the `read`/menu glue.
 
@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Docker image pinned to `oven/bun:1.3-alpine` (spec: no Bun 3.3 release exists; 1.3 is current).
-- Project root: `~/development/projects/dev-helper/` (spec: matches where other projects live).
+- Project root: `~/development/scripts/projects/dev-helper/` (spec: matches where other projects live).
 - Folder for shared helpers is named `utils/`, not `lib/` (explicit user preference).
 - The file-sync daemon (watcher + fallback) runs as a **host-native** `systemd --user` service — never inside the container (spec: must survive independent of the container).
 - `docker-compose.yml` uses `network_mode: host`, `pid: host`, and bind-mounts `$HOME` + `/run/user/<uid>` with `DBUS_SESSION_BUS_ADDRESS` forwarded, so the container can reach the host's systemd/D-Bus session (spec: named tradeoff, less isolation for zero installed host runtimes).
@@ -23,7 +23,7 @@
 ## File Structure
 
 ```
-~/development/projects/dev-helper/
+~/development/scripts/projects/dev-helper/
 ├── run.sh                        # exports HOST_UID/HOST_GID, runs docker compose
 ├── docker-compose.yml
 ├── package.json
@@ -59,11 +59,11 @@
 ### Task 1: Project Scaffolding
 
 **Files:**
-- Create: `~/development/projects/dev-helper/package.json`
-- Create: `~/development/projects/dev-helper/tsconfig.json`
-- Create: `~/development/projects/dev-helper/docker-compose.yml`
-- Create: `~/development/projects/dev-helper/run.sh`
-- Create: `~/development/projects/dev-helper/.gitignore`
+- Create: `~/development/scripts/projects/dev-helper/package.json`
+- Create: `~/development/scripts/projects/dev-helper/tsconfig.json`
+- Create: `~/development/scripts/projects/dev-helper/docker-compose.yml`
+- Create: `~/development/scripts/projects/dev-helper/run.sh`
+- Create: `~/development/scripts/projects/dev-helper/.gitignore`
 
 **Interfaces:**
 - Produces: a working `bun install` / `bun test` / `bun run src/index.ts` environment inside the container for every later task to build on.
@@ -71,8 +71,8 @@
 - [ ] **Step 1: Create the project directory and git-init it**
 
 ```bash
-mkdir -p ~/development/projects/dev-helper/src
-cd ~/development/projects/dev-helper
+mkdir -p ~/development/scripts/projects/dev-helper/src
+cd ~/development/scripts/projects/dev-helper
 git init
 ```
 
@@ -2097,14 +2097,14 @@ git rm helper.sh tests/test_file_sync.bats
 - [ ] **Step 5: Commit both repos**
 
 ```bash
-cd ~/development/projects/dev-helper
+cd ~/development/scripts/projects/dev-helper
 git add src/index.ts
 git commit -m "feat: add main menu loop, dev-helper CLI is now complete"
 
 cd ~/development/scripts
 git commit -m "chore: retire helper.sh, replaced by dev-helper CLI
 
-dev-helper (~/development/projects/dev-helper) now owns every menu item
+dev-helper (~/development/scripts/projects/dev-helper) now owns every menu item
 this script had, plus instant inotify-based file sync and multi-select
 dedup. See docs/superpowers/specs/2026-07-02-dev-helper-cli-rewrite-design.md."
 ```
@@ -2113,6 +2113,6 @@ dedup. See docs/superpowers/specs/2026-07-02-dev-helper-cli-rewrite-design.md."
 
 ## Self-Review Notes
 
-- **Spec coverage:** Bun/Docker (Task 1), `utils` naming (throughout), `~/development/projects/dev-helper` path (Task 1), per-command file split (Tasks 12–18), fileSync split into config/addPairs/viewPairs/removePair/watcher/service (Tasks 5–10), inotify watcher + 5-minute fallback (Task 9), host-native systemd service (Task 10), `inotifywait` install-check (Task 9's `isInotifyToolsInstalled`/`INOTIFY_INSTALL_COMMAND`, wired into the error path in Task 11), multi-select dedup (Task 6's `filterUnsyncedItems`), full replacement of `helper.sh` (Task 19) — every design section maps to a task.
+- **Spec coverage:** Bun/Docker (Task 1), `utils` naming (throughout), `~/development/scripts/projects/dev-helper` path (Task 1), per-command file split (Tasks 12–18), fileSync split into config/addPairs/viewPairs/removePair/watcher/service (Tasks 5–10), inotify watcher + 5-minute fallback (Task 9), host-native systemd service (Task 10), `inotifywait` install-check (Task 9's `isInotifyToolsInstalled`/`INOTIFY_INSTALL_COMMAND`, wired into the error path in Task 11), multi-select dedup (Task 6's `filterUnsyncedItems`), full replacement of `helper.sh` (Task 19) — every design section maps to a task.
 - **Type consistency verified:** `SyncPair` is defined once in `config.ts` (Task 5) and imported by name in every later fileSync task (6–11) without redefinition. `serviceControlArgs`/`installCommands` (Task 10) are consumed as-is by Task 11's `manageService`/`installService` calls — argument shapes match.
 - **Legacy-timer migration:** Task 10's `installCommands()` explicitly disables the old `rsync-sync.timer` unit name from the 2026-06-26 design before enabling the new watcher, so upgrading an existing install doesn't leave two sync mechanisms running against the same `pairs.conf`.

@@ -3,7 +3,7 @@
 ## Overview
 
 Replace `helper.sh` (bash, monolithic, numeric-menu) with an interactive TypeScript CLI running on
-Bun inside Docker, living at `~/development/projects/dev-helper/`. Same 8 capabilities as today,
+Bun inside Docker, living at `~/development/scripts/projects/dev-helper/`. Same 8 capabilities as today,
 split one-file-per-command, driven by arrow-key/checkbox prompts instead of typed numbers. Two
 functional upgrades ride along: instant (inotify-triggered) file sync instead of a 30s poll, and
 duplicate-selection prevention in the multi-select add-pairs flow.
@@ -37,7 +37,7 @@ compose down --rmi all` removes every trace).
 ## Directory Layout
 
 ```
-~/development/projects/dev-helper/
+~/development/scripts/projects/dev-helper/
 ├── docker-compose.yml
 ├── package.json
 ├── tsconfig.json
