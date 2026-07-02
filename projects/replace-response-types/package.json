@@ -1,0 +1,11 @@
+{
+  "name": "replace-response-types",
+  "version": "1.0.0",
+  "description": "Find and replace patterns in files recursively",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {}
+}
