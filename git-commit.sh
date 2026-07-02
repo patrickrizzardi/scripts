@@ -145,6 +145,7 @@ parse_arguments() {
     VERBOSE=false
     DRY_RUN=false
     GROUP_COMMITS=true  # Default to grouped mode
+    SKIP_GPG_SIGN=false  # Set by check_gpg_signing() if GPG is broken
     CO_AUTHORS=()
 
     while [[ $# -gt 0 ]]; do
@@ -1184,14 +1185,19 @@ _validate_commit_message() {
 
 create_commit() {
     local message="$1"
+    local commit_timeout=30  # seconds — no commit should take this long
+
+    $DEBUG && print_info "[debug] create_commit() called"
 
     # Validate commit message format
+    $DEBUG && print_info "[debug] Validating commit message..."
     if ! _validate_commit_message "$message"; then
         print_error "Commit message validation failed"
         return 1
     fi
 
     # Add trailers (co-authors, etc.)
+    $DEBUG && print_info "[debug] Adding trailers..."
     message=$(_add_trailers "$message")
 
     # DRY-RUN MODE: Show what would happen and return
@@ -1208,6 +1214,7 @@ create_commit() {
     fi
 
     # ACTUAL COMMIT MODE
+    $DEBUG && print_info "[debug] Creating temp file for commit message..."
     local temp_file=$(mktemp) || {
         print_error "Failed to create temporary file"
         return 1
@@ -1215,18 +1222,48 @@ create_commit() {
 
     echo "$message" >"$temp_file"
 
-    if git commit -F "$temp_file"; then
+    # Build commit command with optional GPG skip
+    local commit_cmd="git commit -F \"$temp_file\""
+    if $SKIP_GPG_SIGN; then
+        commit_cmd="git commit --no-gpg-sign -F \"$temp_file\""
+        $DEBUG && print_info "[debug] GPG signing disabled for this commit"
+    fi
+
+    $DEBUG && print_info "[debug] Running: $commit_cmd (timeout: ${commit_timeout}s)"
+    $DEBUG && print_info "[debug] Staged files:"
+    $DEBUG && git diff --cached --name-only 2>/dev/null | while read f; do print_info "[debug]   $f"; done
+
+    # Run git commit with timeout to prevent infinite hangs
+    local commit_output
+    commit_output=$(timeout "$commit_timeout" bash -c "$commit_cmd" 2>&1)
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
         rm "$temp_file"
+        echo "$commit_output"
         print_success "Commit created successfully!"
         return 0
+    elif [ $exit_code -eq 124 ]; then
+        rm "$temp_file"
+        print_error "Commit timed out after ${commit_timeout}s!"
+        print_warning "This is almost always caused by GPG signing hanging."
+        print_warning "Likely causes:"
+        print_warning "  - GPG agent waiting for passphrase (pinentry stuck)"
+        print_warning "  - Zombie pinentry from a previous session"
+        print_warning "Quick fixes:"
+        print_info "  1. Restart GPG agent: gpgconf --kill gpg-agent"
+        print_info "  2. Skip signing:      git commit --no-gpg-sign -F <file>"
+        print_info "  3. Disable globally:  git config --global commit.gpgsign false"
+        return 1
     else
-        local exit_code=$?
         rm "$temp_file"
         print_error "Commit failed (exit code: $exit_code)"
+        [ -n "$commit_output" ] && echo "$commit_output"
         print_warning "This could be due to:"
         print_warning "  - Pre-commit hook failure"
         print_warning "  - Nothing staged to commit"
         print_warning "  - Commit message validation failure"
+        print_warning "  - GPG signing failure"
         return 1
     fi
 }
@@ -1776,6 +1813,71 @@ check_git_state() {
     return 0
 }
 
+check_gpg_signing() {
+    # Check if GPG signing is configured and actually working
+    local gpg_sign=$(git config --get commit.gpgsign 2>/dev/null)
+
+    if [[ "$gpg_sign" != "true" ]]; then
+        $DEBUG && print_info "[debug] GPG signing not enabled, skipping check"
+        return 0
+    fi
+
+    local signing_key=$(git config --get user.signingkey 2>/dev/null)
+    if [ -z "$signing_key" ]; then
+        print_warning "GPG signing is enabled but no signing key configured"
+        print_info "Fix with: git config --global user.signingkey <YOUR_KEY_ID>"
+        print_info "Or disable: git config --global commit.gpgsign false"
+        return 1
+    fi
+
+    $DEBUG && print_info "[debug] GPG signing enabled with key: $signing_key"
+
+    # Check for zombie pinentry processes (blocks all GPG operations)
+    local zombie_pinentry=$(ps aux 2>/dev/null | grep '[p]inentry' | awk '{print $2, $10}')
+    if [ -n "$zombie_pinentry" ]; then
+        print_warning "Stale pinentry process detected (GPG passphrase prompt)"
+        print_info "This will block all commits. Cleaning up..."
+        # Kill stale pinentry processes
+        ps aux | grep '[p]inentry' | awk '{print $2}' | while read pid; do
+            kill "$pid" 2>/dev/null && print_info "  Killed pinentry PID $pid"
+        done
+        # Restart GPG agent cleanly
+        gpgconf --kill gpg-agent 2>/dev/null
+        gpgconf --launch gpg-agent 2>/dev/null
+        print_success "GPG agent restarted"
+        sleep 1
+    fi
+
+    # Test GPG signing with a short timeout
+    print_info "Verifying GPG signing works..."
+    local gpg_test_result
+    gpg_test_result=$(echo "test" | timeout 10 gpg --batch --pinentry-mode loopback -bsau "$signing_key" 2>&1)
+    local gpg_exit=$?
+
+    if [ $gpg_exit -eq 0 ]; then
+        print_success "GPG signing verified"
+        return 0
+    elif [ $gpg_exit -eq 124 ]; then
+        # timeout killed it
+        print_error "GPG signing timed out (passphrase agent not responding)"
+        print_info "Try: gpgconf --kill gpg-agent && gpgconf --launch gpg-agent"
+        print_info "Or skip signing: git commit --no-gpg-sign"
+        print_question "Continue without GPG signing for this session? [y/n]"
+        read -p "" confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            SKIP_GPG_SIGN=true
+            return 0
+        fi
+        return 1
+    else
+        # GPG failed for another reason — try without --batch/loopback
+        # (maybe they use a GUI pinentry that works fine interactively)
+        $DEBUG && print_info "[debug] GPG batch test failed (exit $gpg_exit), assuming interactive pinentry"
+        $DEBUG && print_info "[debug] GPG output: $gpg_test_result"
+        return 0
+    fi
+}
+
 check_diff_size() {
     # Get total diff size (all changes)
     # Handle empty repos (no HEAD) by using different diff command
@@ -1852,6 +1954,9 @@ main() {
 
     # Check git state (merge, rebase, etc.)
     check_git_state || return 1
+
+    # Check GPG signing health (prevents silent hangs)
+    check_gpg_signing || return 1
 
     # Check diff size and warn if large
     check_diff_size || return 1
