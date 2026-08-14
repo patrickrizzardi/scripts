@@ -1223,9 +1223,9 @@ create_commit() {
     echo "$message" >"$temp_file"
 
     # Build commit command with optional GPG skip
-    local commit_cmd="git commit -F \"$temp_file\""
+    local commit_cmd="git commit --no-verify -F \"$temp_file\""
     if $SKIP_GPG_SIGN; then
-        commit_cmd="git commit --no-gpg-sign -F \"$temp_file\""
+        commit_cmd="git commit --no-verify --no-gpg-sign -F \"$temp_file\""
         $DEBUG && print_info "[debug] GPG signing disabled for this commit"
     fi
 
