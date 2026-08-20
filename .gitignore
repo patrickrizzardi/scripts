@@ -33,6 +33,15 @@ yarn.lock
 # Bun
 bun.lockb
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
 # Generated files
 dist/
 build/
